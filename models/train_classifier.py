@@ -1,9 +1,7 @@
 import joblib
-import numpy as np
 import pandas as pd
 import pickle
 import re
-import string
 import sys
 from sqlalchemy import create_engine
 
@@ -21,19 +19,17 @@ nltk.download('averaged_perceptron_tagger')
 
 # import libraries
 
-from scipy.stats import gmean
 # import relevant functions/modules from the sklearn
-from sklearn.pipeline import Pipeline, FeatureUnion
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import fbeta_score, make_scorer
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, AdaBoostClassifier
+from sklearn.metrics import classification_report
 from sklearn.model_selection import GridSearchCV
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer, TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.base import BaseEstimator,TransformerMixin
+
 
 def load_data(database_filepath, query):
     engine = create_engine(f'sqlite:///{database_filepath}')
@@ -137,7 +133,8 @@ class StemmerTransformer(BaseEstimator, TransformerMixin):
         return X_series
 
 
-def build_model(X, Y):
+def build_model(X, Y, category_names):
+    score_func = classification_report_runner(category_names, ('weighted avg', 'f1-score'))
     snowball_stemmer = SnowballStemmer("english", ignore_stopwords=True)    
 
     parameters = {
@@ -184,7 +181,7 @@ def build_model(X, Y):
         pipeline,
         parameters,
         cv=5,
-        scoring='f1_weighted',
+        scoring=score_func,
         n_jobs=-1)
 
     print('Training model...')
@@ -194,11 +191,22 @@ def build_model(X, Y):
     print(f"Best Parameters: {grid.best_params_}")
     return grid.best_estimator_
 
+def classification_report_runner(category_names, as_scorer_metrics=None):
+    if as_scorer_metrics:
+        avg, metric = as_scorer_metrics
+        return lambda Y_test, Y_pred: classification_report(Y_test, Y_pred, target_names=category_names, output_dict=True)[avg][metric]
+
+    else:
+        return lambda Y_test, Y_pred: classification_report(Y_test, Y_pred, target_names=category_names)
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    f1_weighted = cross_val_score(model, X_test, Y_test, cv=5, scoring='f1_weighted')
-    print(f"model score: {f1_weighted}")
-    return f1_weighted
+    # Calculate classification report
+    Y_pred = model.predict(X_test)
+    report_runner = classification_report_runner(category_names)
+    report = report_runner(Y_test, Y_pred)
+
+    # Print the classification report
+    print("Classification Report:\n", report)
 
 def save_model(model, model_filepath):
     pickle.dump(model, open(model_filepath, 'wb'))
@@ -209,7 +217,7 @@ def main():
         database_filepath, model_filepath = sys.argv[1:]
         print('Loading data...\n    DATABASE: {}'.format(database_filepath, 'SELECT * FROM Tweets'))
         X, Y, category_names = load_data(database_filepath, 'SELECT * FROM Tweets')
-        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
         
         print(X_train.shape, Y_train.shape)
         print('Building model...')

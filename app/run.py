@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(1, '../models')
-
 import json
 import plotly
 import pandas as pd
@@ -9,12 +6,16 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
 from flask import Flask
-from flask import render_template, request, jsonify
+from flask import render_template, request
 from plotly.graph_objs import Bar
 import joblib
 from sqlalchemy import create_engine
 
-from train_classifier import Normalizer, StemmerTransformer
+
+import sys
+sys.path.insert(1, '../models')
+
+from evaluate_classifier import evaluate
 
 app = Flask(__name__)
 
@@ -35,6 +36,8 @@ df = pd.read_sql_table('Tweets', engine)
 
 # load model
 model = joblib.load("../models/classifier.pkl")
+
+evaluate("../data/DisasterResponse.db", "../models/classifier.pkl")
 
 
 # index webpage displays cool visuals and receives user input text for model
