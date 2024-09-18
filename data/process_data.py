@@ -27,6 +27,8 @@ def clean_data(df):
 
 
 def save_data(df, database_filename, table):
+    if os.path.exists(database_filename):
+        os.remove(database_filename)
     engine = create_engine(f'sqlite:///{database_filename}')
     df.to_sql(table, engine, index=False)  
 
