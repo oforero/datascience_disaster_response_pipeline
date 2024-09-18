@@ -47,13 +47,21 @@ evaluate("../data/DisasterResponse.db", "../models/classifier.pkl")
 def index():
     
     # extract data needed for visuals
-    # TODO: Below is an example - modify to extract data for your own visuals
+
+    # Messages by genre
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
+    
+    # Message By Category
+    categories = df[df.columns[4:]]
+    category_counts = (categories.mean()*categories.shape[0]).sort_values(ascending=False)
+    category_names = list(category_counts.index)
+
     
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
     graphs = [
+        # Visualisations: Messages by Genre
         {
             'data': [
                 Bar(
@@ -65,13 +73,33 @@ def index():
             'layout': {
                 'title': 'Distribution of Message Genres',
                 'yaxis': {
-                    'title': "Count"
+                    'title': "Count of Messages"
                 },
                 'xaxis': {
                     'title': "Genre"
                 }
             }
-        }
+        },
+        # Visualisations: Messages by Category
+        {
+            'data': [
+                Bar(
+                    x=category_names,
+                    y=category_counts
+                )
+            ],
+
+            'layout': {
+                'title': 'Distribution of Message by Category',
+                'yaxis': {
+                    'title': "Count of Messages"
+                },
+                'xaxis': {
+                    'title': "Categories"
+                }
+            }
+            
+        },
     ]
     
     # encode plotly graphs in JSON
