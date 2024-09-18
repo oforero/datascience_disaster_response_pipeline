@@ -16,6 +16,7 @@ import sys
 sys.path.insert(1, '../models')
 
 from evaluate_classifier import evaluate
+from train_classifier import Normalizer, StemmerTransformer
 
 app = Flask(__name__)
 
