@@ -40,6 +40,25 @@ It mark each message as belogging to none, one, or many of the following message
 - Cold
 - Other Weather
 
+# Project Folder Structure
+
+    disaster_response_pipeline (Workspace Root)
+        |-- app
+            |-- templates
+                    |-- go.html
+                    |-- master.html
+            |-- run.py
+        |-- data
+            |-- disaster_message.csv
+            |-- disaster_categories.csv
+            |-- DisasterResponse.db
+            |-- process_data.py
+        |-- models
+            |-- classifier.pkl
+            |-- train_classifier.py
+            |-- evaluate_classifier.py
+        |-- README.md
+
 # The Model
 
 ## Current Model Performance
