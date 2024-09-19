@@ -329,13 +329,18 @@ def save_model(model, model_filepath):
 def main():
     """
     The entry point to run the training script.
+
+    Sys Args:
+        Path to the messages file.
+        Path to the serilized the resulting model.
+  
     """
     if len(sys.argv) == 3:
         database_filepath, model_filepath = sys.argv[1:]
         print('Loading data...\n    DATABASE: {}'.format(database_filepath, 'SELECT * FROM Tweets'))
         X, Y, category_names = load_data(database_filepath, 'SELECT * FROM Tweets')
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
-        
+    
         print(X_train.shape, Y_train.shape)
         print('Building model...')
         model = build_model(X_train, Y_train)
