@@ -1,5 +1,10 @@
 # Disaster Response Pipeline Project
 
+## GitHub Repository:
+
+This project's source code is hosted on [GitHub](https://github.com/oforero/datascience_disaster_response_pipeline)
+
+## Overview
 This projects uses the a Multiple Category Classification Model with a Neural Network as underlying model.
 
 It mark each message as belogging to none, one, or many of the following message categories:
