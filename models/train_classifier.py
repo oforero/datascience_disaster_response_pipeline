@@ -343,7 +343,7 @@ def main():
     
         print(X_train.shape, Y_train.shape)
         print('Building model...')
-        model = build_model(X_train, Y_train)
+        model = build_model(X_train, Y_train, category_names)
         
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)
