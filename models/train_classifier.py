@@ -32,6 +32,18 @@ from sklearn.base import BaseEstimator,TransformerMixin
 
 
 def load_data(database_filepath, query):
+    """
+    Load a SQL Lite DB, run a query and return the results,
+
+    Args:
+        database_filepath (str): A path to the SQL Lite DB
+        query (str): A query to execute against that Database
+
+    Returns:
+        DataFrame: A dataframe with only the message column (X)
+        DataFrame: A dataframe with the category columns (Y)
+        List[str]: A list of the category names
+    """
     engine = create_engine(f'sqlite:///{database_filepath}')
     df = pd.read_sql(query, engine)
     # Drop Columns where all values are 0 since those contain no information
@@ -43,29 +55,57 @@ def load_data(database_filepath, query):
 
 class CheckInputs(BaseEstimator, TransformerMixin):
     """
-    Remove URLs from a text
-    
+    Transformer class to print debug information in a Pipeline
+    it does not modify any data.
     """
 
-    # Given it is a tranformer we can return the self 
     def fit(self, X, Y):
+        """
+        Prints the shapes of X and Y
+
+        Args:
+            X (DataFrame): The X (features) dimension for the model
+            Y (DataFrame): The Y (labels) dimension for the model
+
+        Returns:
+            self: since it is a transformer, the fit method 
+                returns self
+        """
         print("CheckInputs", X.shape)
         print(X)
         print("CheckInputs", Y.shape)
         return self
 
     def transform(self, X):
+        """
+        A no-op transformer
+
+        Args:
+            X (DataFrame): The X dimension for the model
+
+        Returns:
+            DataFrame: The inputs unchanged
+        """
         return X
 
 
 class Normalizer(BaseEstimator, TransformerMixin):
     """
-    Remove URLs from a text
+    A Transformer to clean (normalize) the data further:
     
+        * Convert the message to all lowercase
+        * Replace the URLs with a <URL> place holder
+        * Remove punctuation from the message
     """
 
-    # Given it is a tranformer we can return the self 
     def fit(self, X, y=None):
+        """
+        No-op
+
+        Returns:
+            self: since it is a transformer, the fit method 
+                returns self
+        """
         return self
 
     def remove_url(self, text):
@@ -81,6 +121,18 @@ class Normalizer(BaseEstimator, TransformerMixin):
         return text
 
     def transform(self, X):
+        """
+        Transforms the data:
+            * Convert the message to all lowercase
+            * Replace the URLs with a <URL> place holder
+            * Remove punctuation from the message
+        
+        Args:
+            X (DataFrame): The X dimension for the model
+
+        Returns:
+            DataFrame: The transformed dataframe
+        """        
         X_series = pd.Series(X) if type(X) == list else X
         # Convert to lower case
         X_series = X_series.apply(lambda t: t.lower())
@@ -91,40 +143,57 @@ class Normalizer(BaseEstimator, TransformerMixin):
         
         return X_series
 
+
 class StemmerTransformer(BaseEstimator, TransformerMixin):
     """
-    Remove URLs from a text
+    A transformer that Stems to the inputs
     
     """
     def __init__(self):
         self.stemmer = SnowballStemmer("english", ignore_stopwords=True) 
-        self.stemmer.stem("house")   
+        self.stemmer.stem("house")  
         self.stop_words = set(stopwords.words('english'))
         self.punctuation_remover = RegexpTokenizer(r'\w+')
 
-    def lemmatizer(text):
-        lemmatizer = WordNetLemmatizer()
-        stop_words = set(stopwords.words('english'))
-        punctuation_remover = RegexpTokenizer(r'\w+')
-
-        without_stop_words = [w for w in punctuation_remover.tokenize(text.lower()) if not w in stop_words]
-        lemmatized = [lemmatizer.lemmatize(w) for w in without_stop_words]
-        #print(lemmatized)
-        return ' '.join(lemmatized)
-
     def run_stemmer(self, text):
-        without_stop_words = [w for w in self.punctuation_remover.tokenize(text.lower()) if not w in self.stop_words]
+        """
+        Applies the stemmer to a text
+
+        Args:
+            text (str): a string to apply stemming to
+
+        Returns:
+            str: the string with the words replaced by its stem
+        """
+        without_stop_words = [w for w in 
+                              self.punctuation_remover.tokenize(text.lower())
+                              if w not in self.stop_words]
         stemmed = [self.stemmer.stem(w) for w in without_stop_words]
         return ' '.join(stemmed)
-        
-
-    # Given it is a tranformer we can return the self 
+       
     def fit(self, X, y=None):
+        """
+        No-op
+
+        Returns:
+            self: since it is a transformer, the fit method 
+                returns self
+        """
         return self
 
-
     def transform(self, X):
-        X_series = pd.Series(X) if type(X) == list else X
+        """
+        Transforms the data:
+            * Convert the message to all lowercase
+            * Stemm the message
+        
+        Args:
+            X (DataFrame): The X dimension for the model
+
+        Returns:
+            DataFrame: The transformed dataframe
+        """        
+        X_series = pd.Series(X) if isinstance(X, list) else X
         # Convert to lower case
         X_series = X_series.apply(lambda t: t.lower())
         # Run the stemmer
@@ -134,8 +203,19 @@ class StemmerTransformer(BaseEstimator, TransformerMixin):
 
 
 def build_model(X, Y, category_names):
-    score_func = classification_report_runner(category_names, ('weighted avg', 'f1-score'))
-    snowball_stemmer = SnowballStemmer("english", ignore_stopwords=True)    
+    """
+    Builds a model and trains it using a GridSearchCV on the input data
+
+    Args:
+        X (DataFrame): a data frame containing the features
+        Y (DataFrame): a data frame containing the labels
+        category_names (List[str]): a list with the label names
+
+    Returns:
+        Classifier: the best trained classifier 
+    """
+    score_func = classification_report_runner(
+        category_names, ('weighted avg', 'f1-score'))
 
     parameters = {
         #'cv__max_df': (0.9, 0.95, 0.99),
@@ -191,16 +271,42 @@ def build_model(X, Y, category_names):
     print(f"Best Parameters: {grid.best_params_}")
     return grid.best_estimator_
 
+
 def classification_report_runner(category_names, as_scorer_metrics=None):
+    """
+    A utility function to run the classification report for console reporting
+    or as a scoring function in a Cross Validation run.
+
+    Args:
+        category_names (List[str]): The names of the labels
+        as_scorer_metrics ((str, str)): A sequence of two strings to select
+            which metric to return, if None then the complete report is
+            returned as a string
+
+    Returns:
+        float | str: the value of the metric requested or 
+            the complete report as a string if no metric is requested.
+    """
     if as_scorer_metrics:
         avg, metric = as_scorer_metrics
-        return lambda Y_test, Y_pred: classification_report(Y_test, Y_pred, target_names=category_names, output_dict=True)[avg][metric]
-
+        return lambda Y_test, Y_pred: classification_report(
+            Y_test, Y_pred, target_names=category_names,
+            output_dict=True)[avg][metric]
     else:
-        return lambda Y_test, Y_pred: classification_report(Y_test, Y_pred, target_names=category_names)
+        return lambda Y_test, Y_pred: classification_report(
+            Y_test, Y_pred, target_names=category_names)
+
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    # Calculate classification report
+    """
+    Utility function to run the evaluation of an existing model
+
+    Args:
+        model (Classifier): The model to evaluate
+        X_test (DataFrame): The features DataFrame
+        Y_test (DataFrame): The expected labels
+        category_names (DataFrame): The label names
+    """
     Y_pred = model.predict(X_test)
     report_runner = classification_report_runner(category_names)
     report = report_runner(Y_test, Y_pred)
@@ -208,11 +314,22 @@ def evaluate_model(model, X_test, Y_test, category_names):
     # Print the classification report
     print("Classification Report:\n", report)
 
+
 def save_model(model, model_filepath):
+    """
+    Serialize a model to reuse it in the web application
+
+    Args:
+        model (Classifier): The model to serialize
+        model_filepath (str): The pat to save the model
+    """
     pickle.dump(model, open(model_filepath, 'wb'))
 
 
 def main():
+    """
+    The entry point to run the training script.
+    """
     if len(sys.argv) == 3:
         database_filepath, model_filepath = sys.argv[1:]
         print('Loading data...\n    DATABASE: {}'.format(database_filepath, 'SELECT * FROM Tweets'))
